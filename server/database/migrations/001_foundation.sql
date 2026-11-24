@@ -1,0 +1,16 @@
+CREATE TABLE users (
+ id CHAR(36) PRIMARY KEY, email VARCHAR(254) COLLATE utf8mb4_0900_as_ci NOT NULL UNIQUE,
+ first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, phone VARCHAR(20),
+ language ENUM('ru','en') NOT NULL DEFAULT 'ru', state ENUM('invited','active','blocked') NOT NULL DEFAULT 'invited',
+ password_hash VARCHAR(255), created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+) ENGINE=InnoDB;
+CREATE TABLE user_roles (user_id CHAR(36) NOT NULL, role ENUM('admin','teacher','student') NOT NULL, PRIMARY KEY(user_id,role),FOREIGN KEY(user_id) REFERENCES users(id)) ENGINE=InnoDB;
+CREATE TABLE sessions (token_hash CHAR(64) PRIMARY KEY, user_id CHAR(36), csrf_token CHAR(64) NOT NULL, created_at DATETIME(3) NOT NULL, last_seen DATETIME(3) NOT NULL, expires_at DATETIME(3) NOT NULL, FOREIGN KEY(user_id) REFERENCES users(id),INDEX(expires_at)) ENGINE=InnoDB;
+CREATE TABLE invitations (id CHAR(36) PRIMARY KEY,user_id CHAR(36) NOT NULL,token_hash CHAR(64) NOT NULL UNIQUE,expires_at DATETIME(3) NOT NULL,used_at DATETIME(3),FOREIGN KEY(user_id) REFERENCES users(id)) ENGINE=InnoDB;
+CREATE TABLE courses (id CHAR(36) PRIMARY KEY,title VARCHAR(200) NOT NULL,description TEXT,state ENUM('active','archived') NOT NULL DEFAULT 'active') ENGINE=InnoDB;
+CREATE TABLE study_groups (id CHAR(36) PRIMARY KEY,course_id CHAR(36) NOT NULL,code VARCHAR(30) NOT NULL UNIQUE,title VARCHAR(200) NOT NULL,start_date DATE NOT NULL,end_date DATE NOT NULL,capacity INT, state ENUM('preparation','learning','completed','archived') NOT NULL DEFAULT 'learning',version INT NOT NULL DEFAULT 1,FOREIGN KEY(course_id) REFERENCES courses(id),CHECK(capacity IS NULL OR capacity>0),CHECK(end_date>=start_date)) ENGINE=InnoDB;
+CREATE TABLE group_teachers (group_id CHAR(36) NOT NULL,teacher_id CHAR(36) NOT NULL, PRIMARY KEY(group_id,teacher_id),FOREIGN KEY(group_id) REFERENCES study_groups(id),FOREIGN KEY(teacher_id) REFERENCES users(id)) ENGINE=InnoDB;
+CREATE TABLE enrollments (id CHAR(36) PRIMARY KEY,student_id CHAR(36) NOT NULL,group_id CHAR(36) NOT NULL,start_date DATE NOT NULL,access_until DATE, state ENUM('planned','studying','completed','withdrawn') NOT NULL,UNIQUE(student_id,group_id),FOREIGN KEY(student_id) REFERENCES users(id),FOREIGN KEY(group_id) REFERENCES study_groups(id)) ENGINE=InnoDB;
+CREATE TABLE enrollment_periods (id CHAR(36) PRIMARY KEY,enrollment_id CHAR(36) NOT NULL,start_date DATE NOT NULL,end_date DATE,FOREIGN KEY(enrollment_id) REFERENCES enrollments(id),CHECK(end_date IS NULL OR end_date>=start_date)) ENGINE=InnoDB;
+CREATE TABLE lessons (id CHAR(36) PRIMARY KEY,group_id CHAR(36) NOT NULL,teacher_id CHAR(36) NOT NULL,title VARCHAR(200) NOT NULL,starts_at DATETIME(3) NOT NULL,ends_at DATETIME(3) NOT NULL,format ENUM('online','onsite') NOT NULL,location VARCHAR(1000) NOT NULL,state ENUM('planned','completed','cancelled') NOT NULL DEFAULT 'planned',version INT NOT NULL DEFAULT 1,FOREIGN KEY(group_id,teacher_id) REFERENCES group_teachers(group_id,teacher_id),INDEX(group_id,starts_at),INDEX(teacher_id,starts_at),CHECK(ends_at>starts_at)) ENGINE=InnoDB;
+CREATE TABLE audit_events (id CHAR(36) PRIMARY KEY,actor_id CHAR(36),action VARCHAR(80) NOT NULL,object_id CHAR(36),details JSON,created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),FOREIGN KEY(actor_id) REFERENCES users(id)) ENGINE=InnoDB;

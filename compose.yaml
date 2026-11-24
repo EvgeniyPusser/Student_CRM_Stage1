@@ -1,0 +1,43 @@
+name: student-crm-stage1
+services:
+  db:
+    image: mysql:8.4.7
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:?Run node scripts/setup.mjs first}
+      MYSQL_USER: ${DB_USER:?Missing DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Missing DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Missing root password}
+      TZ: UTC
+    volumes:
+      - crm_mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_PASSWORD mysql -h 127.0.0.1 -u $$MYSQL_USER $$MYSQL_DATABASE -e 'SELECT 1' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+  migrate:
+    build: .
+    env_file: .env
+    environment:
+      DB_HOST: db
+    command: ["node", "scripts/migrate.js"]
+    depends_on:
+      db:
+        condition: service_healthy
+  app:
+    build: .
+    env_file: .env
+    environment:
+      DB_HOST: db
+      APP_HOST: 0.0.0.0
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - crm_files:/app/private-files
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    init: true
+volumes:
+  crm_mysql:
+  crm_files:

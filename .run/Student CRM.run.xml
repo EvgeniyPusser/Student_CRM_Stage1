@@ -1,0 +1,9 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Student CRM" type="NodeJSConfigurationType" path-to-js-file="$PROJECT_DIR$/server/src/index.js" working-dir="$PROJECT_DIR$/server">
+    <node-parameters value="--env-file=../.env" />
+    <envs>
+      <env name="APP_HOST" value="127.0.0.1" />
+    </envs>
+    <method v="2" />
+  </configuration>
+</component>

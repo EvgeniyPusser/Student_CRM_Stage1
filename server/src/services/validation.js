@@ -1,0 +1,11 @@
+import {z} from 'zod';
+import {DateTime} from 'luxon';
+import {parsePhoneNumberFromString} from 'libphonenumber-js/max';
+export const text=z.string().trim().min(1).max(200), uuid=z.string().uuid();
+export const date=z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>DateTime.fromISO(v).isValid,'Invalid calendar date');
+const phone=z.string().trim().max(32).optional().transform(v=>{if(!v)return null;const p=parsePhoneNumberFromString(v);if(!p||!p.isValid()||!v.startsWith('+'))throw new Error('invalidPhone');return p.number});
+export const password=z.string().min(12).max(256);
+export const userInput=z.object({email:z.string().trim().email().max(254).transform(v=>v.toLowerCase()),firstName:text.max(100),lastName:text.max(100),phone,language:z.enum(['ru','en']).default('ru')}).strict();
+export const groupInput=z.object({courseId:uuid,code:text.max(30),title:text,startDate:date,endDate:date,capacity:z.number().int().positive().max(1000).nullable().default(null),teacherIds:z.array(uuid).min(1).max(20),state:z.enum(['preparation','learning']).default('learning')}).strict().refine(v=>v.endDate>=v.startDate);
+export const enrollmentInput=z.object({studentId:uuid,startDate:date}).strict();
+export const lessonInput=z.object({groupId:uuid,teacherId:uuid,title:text,startsAt:z.string().datetime({offset:true}),endsAt:z.string().datetime({offset:true}),format:z.enum(['online','onsite']),location:z.string().trim().min(1).max(1000)}).strict().refine(v=>v.format!=='online'||/^https:\/\//i.test(v.location));
